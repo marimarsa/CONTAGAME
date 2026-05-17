@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContaGame!</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --background: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .game-container {
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 550px;
+            text-align: center;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .lives { color: var(--danger); font-size: 1.2rem; }
+        .score { color: var(--primary); font-size: 1.2rem; }
+
+        .progress-bar {
+            background-color: #e5e7eb;
+            height: 10px;
+            border-radius: 5px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        .progress {
+            background-color: var(--primary);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .question {
+            font-size: 1.25rem;
+            margin-bottom: 25px;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .options-grid {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .btn-option {
+            background-color: #fff;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .btn-option:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #f8fafc;
+        }
+
+        .correct {
+            background-color: #d1fae5 !important;
+            border-color: var(--success) !important;
+            color: #065f46;
+        }
+
+        .incorrect {
+            background-color: #fee2e2 !important;
+            border-color: var(--danger) !important;
+            color: #991b1b;
+        }
+
+        .feedback {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            display: none;
+            line-height: 1.4;
+            text-align: left;
+        }
+
+        .feedback.correct-bg { background-color: #e6f4ea; color: #137333; }
+        .feedback.incorrect-bg { background-color: #fce8e6; color: #c5221f; }
+
+        .btn-next {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .btn-lang {
+            background-color: #f3f4f6;
+            border: 2px solid #d1d5db;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+            font-size: 1rem;
+        }
+        .btn-lang:hover { background-color: #e5e7eb; }
+
+        .screen { display: none; }
+        .active { display: block; }
+        
+        .level-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .level-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f1f5f9;
+        }
+        .level-card:not(.locked):hover {
+            border-color: var(--primary);
+            background: #eef2ff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <!-- PANTALLA SELECCIÓN IDIOMA -->
+        <div id="lang-screen" class="screen active">
+            <h1>📊 ContaGame!</h1>
+            <p>Selecciona la teua llengua / Selecciona tu lengua:</p>
+            <button class="btn-lang" onclick="setLanguage('ca')">Valencià 🌐</button>
+            <button class="btn-lang" onclick="setLanguage('es')">Castellano 🌐</button>
+        </div>
+
+        <!-- PANTALLA MENÚ DE NIVELES -->
+        <div id="menu-screen" class="screen">
+            <h2 id="menu-title">Selecciona el Nivell</h2>
+            <div id="levels-list"></div>
+        </div>
+
+        <!-- PANTALLA DE JUEGO -->
+        <div id="game-screen" class="screen">
+            <div class="header">
+                <span class="score">⭐ <span id="txt-score">Punts</span>: <span id="score-val">0</span></span>
+                <span class="lives" id="lives-display">❤️❤️❤️</span>
+            </div>
+            <div class="progress-bar"><div id="progress" class="progress"></div></div>
+            <div id="level-indicator" style="color: #6b7280; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 5px; font-weight: bold;"></div>
+            <div class="question" id="question-text"></div>
+            <div class="options-grid" id="options-container"></div>
+            <div class="feedback" id="feedback-box"></div>
+            <button class="btn-next" id="next-btn" onclick="nextQuestion()" style="display:none;">Següent / Siguiente 👉</button>
+        </div>
+
+        <!-- PANTALLA RESULTADO DEL NIVEL -->
+        <div id="level-end-screen" class="screen">
+            <h2 id="level-end-title">Nivell Finalitzat</h2>
+            <p id="level-end-result" style="font-size: 1.2rem; margin: 20px 0;"></p>
+            <button class="btn-next" id="level-end-btn" onclick="goToMenu()">Tornar al Menú 📋</button>
+        </div>
+    </div>
+
+    <script>
+        // Traducciones de la interfaz
+        const i18n = {
+            ca: {
+                menuTitle: "📋 Menú de Nivells",
+                score: "Punts",
+                nextBtn: "Següent Pregunta 👉",
+                backMenu: "Tornar al Menú 📋",
+                lvl1: "Nivell 1: Masses Patrimonials",
+                lvl2: "Nivell 2: El Compte i la T",
+                lvl3: "Nivell 3: Partida Doble i Assents",
+                locked: "Bloquejat (Aprova el nivell anterior)",
+                passed: "🎉 Felicitats! Has encertat {correct} de 10 preguntes. Has desbloquejat el següent nivell!",
+                failed: "😢 Has encertat {correct} de 10 preguntes. Necessites un mínim de 5 per a passar de nivell.",
+                gameOver: "💀 T'has quedat sense vides! Torna a intentar aquest nivell."
+            },
+            es: {
+                menuTitle: "📋 Menú de Niveles",
+                score: "Puntos",
+                nextBtn: "Siguiente Pregunta 👉",
+                backMenu: "Volver al Menú 📋",
+                lvl1: "Nivel 1: Masas Patrimoniales",
+                lvl2: "Nivel 2: La Cuenta y la T",
+                lvl3: "Nivel 3: Partida Doble y Asientos",
+                locked: "Bloqueado (Aprueba el nivel anterior)",
+                passed: "🎉 ¡Felicidades! Has acertado {correct} de 10 preguntas. ¡Has desbloqueado el siguiente nivel!",
+                failed: "😢 Has acertado {correct} de 10 preguntas. Necesitas un mínimo de 5 para pasar de nivel.",
+                gameOver: "💀 ¡Te has quedado sin vidas! Vuelve a intentar este nivel."
+            }
+        };
+
+        // Banco de preguntas bilingüe (10 por nivel)
+        const dbQuestions = {
+            ca: {
+                1: [
+                    { q: "El compte de 'Maquinària' és...", o: ["Actiu No Corrent", "Actiu Corrent", "Passiu Corrent", "Patrimoni Net"], a: 0, f: "La maquinària s'utilitza a llarg termini, és Actiu No Corrent." },
+                    { q: "Quin compte representa un deute amb subministradors de gènere?", o: ["Clients", "Deutors", "Proveïdors", "Alemanyes"], a: 2, f: "Els deutes per compres de mercaderies es registren en 'Proveïdors'." },
+                    { q: "Els diners en la llibreta d'estalvis del banc són...", o: ["Actiu Corrent", "Passiu Corrent", "Patrimoni Net", "Actiu No Corrent"], a: 0, f: "Són diners completament disponibles a curt termini." },
+                    { q: "El Capital Social de l'empresa forma part de:", o: ["Actiu", "Passiu Corrent", "Patrimoni Net", "Passiu No Corrent"], a: 2, f: "El capital són els recursos propis de l'empresa (Patrimoni Net)." },
+                    { q: "Les aplicacions informàtiques (programari) són:", o: ["Actiu Corrent", "Immobilitzat Inmaterial (No Corrent)", "Passiu", "Despeses"], a: 1, f: "Són elements intangibles que duren més d'un any." },
+                    { q: "Un préstec bancari a retornar en 5 anys és:", o: ["Passiu Corrent", "Actiu No Corrent", "Passiu No Corrent", "Patrimoni Net"], a: 2, f: "Al ser a llarg termini (més de 12 mesos), és Passiu No Corrent." },
+                    { q: "El compte de 'Mercaderies' en el magatzem és:", o: ["Actiu Corrent (Existències)", "Actiu No Corrent", "Passiu", "Ingrés"], a: 0, f: "Són existències destinades a la venda a curt termini." },
+                    { q: "Si un client ens deu diners per una venda, és un compte de:", o: ["Passiu Corrent", "Actiu Corrent", "Patrimoni Net", "Despesa"], a: 1, f: "Representa un dret de cobrament, per tant és Actiu Corrent." },
+                    { q: "Quina d'aquestes equacions patrimonials és la correcta?", o: ["Actiu = Passiu - Patrimoni Net", "Actiu = Passiu + Patrimoni Net", "Passiu = Actiu + Patrimoni Net", "Patrimoni Net = Actiu + Passiu"], a: 1, f: "L'Actiu (béns i drets) sempre és igual al finançament total (Passiu + PN)." },
+                    { q: "Les furgonetes de repartiment de l'empresa es comptabilitzen com a:", o: ["Elements de transport (Actiu No Corrent)", "Mercaderies", "Despeses d'explotació", "Passiu Corrent"], a: 0, f: "Són vehicles propis de l'empresa per a la seua activitat permanent." }
+                ],
+                2: [
+                    { q: "En un compte en T, el costat esquerre s'anomena...", o: ["Haber", "Debe", "Saldo", "Càrrec"], a: 1, f: "El Debe sempre és el costat esquerre." },
+                    { q: "Què significa 'carregar' un compte?", o: ["Fer una anotació en l'Haber", "Fer una anotació en el Debe", "Calcular el seu saldo", "Tancar el compte"], a: 1, f: "Carregar o adeudar significa registrar en el Debe." },
+                    { q: "Els comptes d'Actiu on augmenten el seu valor?", o: ["En el Debe", "En l'Haber", "En els dos costats", "No augmenten"], a: 0, f: "Els comptes d'Actiu comencen i augmenten pel Debe." },
+                    { q: "Els comptes de Passiu on disminuixen el seu valor?", o: ["En el Debe", "En l'Haber", "Sempre disminuixen", "Mai disminuixen"], a: 0, f: "El Passiu funciona al revés de l'Actiu: disminuïx pel Debe." },
+                    { q: "Què és el saldo d'un compte?", o: ["La suma del Debe", "La suma de l'Haber", "La diferència entre les sumes del Debe i de l'Haber", "Els diners que hi ha al banc"], a: 2, f: "El saldo és la diferència entre les anotacions d'un costat i de l'altre." },
+                    { q: "Si la suma del Debe és major que la de l'Haber, el saldo és:", o: ["Saldo Creditor", "Saldo Deutor", "Saldo Nul", "Saldo Actiu"], a: 1, f: "Quan Debe > Haber, el saldo és Deutor (SD)." },
+                    { q: "Un compte de despeses (com 'Arrendaments') funciona exactament com un compte de:", o: ["Passiu", "Actiu", "Patrimoni Net", "Ingressos"], a: 1, f: "Les despeses augmenten pel Debe, igual que els Actius." },
+                    { q: "Els comptes d'ingressos (com 'Vendes de mercaderies') augmenten per:", o: ["El Debe", "L'Haber", "Els dos costats", "Depén de la factura"], a: 1, f: "Els ingressos sempre neixen i augmenten per l'Haber." },
+                    { q: "Què significa 'liquidar' un compte?", o: ["Obrir-lo per primera vegada", "Fer les operacions per a determinar el seu saldo", "Esborrar-lo del llibre", "Pagar el deute"], a: 1, f: "Liquidar és sumar ambdós costats i trobar el saldo." },
+                    { q: "Si un compte té la mateixa suma en el Debe que en l'Haber, està:", o: ["Liquidada", "Saldada o a zero", "Quadrada", "Incorrecta"], a: 1, f: "Es diu que un compte està saldat quan el seu saldo és zero." }
+                ],
+                3: [
+                    { q: "El principi de la Partida Doble implica que:", o: ["Hi ha un deutor o deutors per a cada creditor", "Es registren els imports dues vegades", "La suma del Debe pot ser diferent a l'Haber", "Només s'usen dos comptes"], a: 0, f: "No hi ha deutor sense creditor; la suma del Debe ha de ser igual a la de l'Haber." },
+                    { q: "Fem una compra de mercaderies en efectiu. Quins comptes intervenen?", o: ["Compres de mercaderies i Proveïdors", "Compres de mercaderies i Caixa", "Clients i Vendes", "Bancs i Proveïdors"], a: 1, f: "Augmenta la despesa (Compres) i disminuïxen els diners en efectiu (Caixa)." },
+                    { q: "Paguem per banc un deute pendent amb un proveïdor. L'asseyent tindrà:", o: ["Proveïdors en el Debe i Bancs en l'Haber", "Bancs en el Debe i Proveïdors en l'Haber", "Caixa en el Debe i Clients en l'Haber", "Només anotacions en l'Haber"], a: 0, f: "Disminuïx el deute (Proveïdors al Debe) i disminuïxen els nostres diners (Bancs a l'Haber)." },
+                    { q: "On es registren cronològicament, dia a dia, tots els assents comptables?", o: ["Llibre Major", "Llibre de Balanços", "Llibre Diari", "Llibre de Sòcis"], a: 2, f: "El Llibre Diari registra les operacions en ordre cronològic." },
+                    { q: "Si ingressem diners en efectiu en el compte del banc de l'empresa:", o: ["Es carrega Bancs i s'abona Caixa", "Es carrega Caixa i s'abona Bancs", "Es carrega Bancs i es carrega Caixa", "Es gasta una comissió"], a: 0, f: "Augmenta Bancs (Debe) i disminuïx Caixa (Haber)." },
+                    { q: "Un assent que té un sol compte en el Debe i un sol compte en l'Haber és un assent:", o: ["Compost", "Mixte", "Simple", "Unilateral"], a: 2, f: "Són assents simples els que només relacionen un compte de càrrec i un d'abonament." },
+                    { q: "L'IVA Suportat en una compra de mercaderies es col·loca en:", o: ["El Debe, juntament amb la compra", "L'Haber, juntament amb el proveïdor", "No es posa en l'assent", "Depén de si es paga ja"], a: 0, f: "L'IVA Suportat és un dret (Actiu) i acompanya la despesa en el Debe." },
+                    { q: "El Llibre Major recull els comptes en forma de:", o: ["Llistat continu", "Comptes en T per a veure els moviments de cada element", "Gràfics de barres", "Full de balanç final"], a: 1, f: "El Major organitza la informació obrint una 'T' per a cada compte." },
+                    { q: "Un assent d'obertura serveix per a:", o: ["Començar l'exercici comptable amb els saldos inicials", "Tancar l'any comercial", "Registrar les vendes diàries", "Demanar un préstec"], a: 0, f: "L'assent d'obertura obri la comptabilitat del nou any reflectint el patrimoni inicial." },
+                    { q: "Com es diu l'anotació a l'Haber en un assent?", o: ["Càrrec", "Abonament", "Adeute", "Quadre"], a: 1, f: "Anotar a l'Haber s'anomena 'abonar' o 'acreditar'." }
+                ]
+            },
+            es: {
+                1: [
+                    { q: "La cuenta de 'Maquinaria' pertenece a qué masa patrimonial?", o: ["Activo No Corriente", "Activo Corriente", "Pasivo Corriente", "Patrimonio Neto"], a: 0, f: "La maquinaria permanece a largo plazo, es Activo No Corriente." },
+                    { q: "¿Qué cuenta representa una deuda con suministradores de género?", o: ["Clientes", "Deudores", "Proveedores", "Bancos"], a: 2, f: "Las deudas por compras de existencias van a 'Proveedores'." },
+                    { q: "El dinero en la cuenta corriente del banco es...", o: ["Activo Corriente", "Pasivo Corriente", "Patrimonio Neto", "Activo No Corriente"], a: 0, f: "Es dinero totalmente disponible a corto plazo." },
+                    { q: "El Capital Social de la empresa forma parte de:", o: ["Activo", "Pasivo Corriente", "Patrimonio Neto", "Pasivo No Corriente"], a: 2, f: "El capital son los recursos propios de la empresa (Patrimonio Neto)." },
+                    { q: "Las aplicaciones informáticas (software) son:", o: ["Activo Corriente", "Inmovilizado Intangible (No Corriente)", "Pasivo", "Gastos"], a: 1, f: "Son elementos intangibles que duran más de un año." },
+                    { q: "Un préstamo bancario a devolver en 5 años es:", o: ["Pasivo Corriente", "Activo No Corriente", "Pasivo No Corriente", "Patrimonio Neto"], a: 2, f: "Al ser a largo plazo (más de 12 meses), es Pasivo No Corriente." },
+                    { q: "La cuenta de 'Mercaderías' en el almacén es:", o: ["Activo Corriente (Existencias)", "Activo No Corriente", "Pasivo", "Ingreso"], a: 0, f: "Son existencias destinadas a la venta a corto plazo." },
+                    { q: "Si un cliente nos debe dinero por una venta, es una cuenta de:", o: ["Pasivo Corriente", "Activo Corriente", "Patrimonio Neto", "Gasto"], a: 1, f: "Representa un derecho de cobro, por tanto es Activo Corriente." },
+                    { q: "¿Cuál de estas ecuaciones patrimoniales es la correcta?", o: ["Activo = Pasivo - Patrimonio Neto", "Activo = Pasivo + Patrimonio Neto", "Pasivo = Activo + Patrimonio Neto", "Patrimonio Neto = Activo + Pasivo"], a: 1, f: "El Activo (bienes/derechos) siempre es igual a la financiación (Pasivo + PN)." },
+                    { q: "Las furgonetas de reparto de la empresa se contabilizan como:", o: ["Elementos de transporte (Activo No Corriente)", "Mercaderías", "Gastos de explotación", "Pasivo Corriente"], a: 0, f: "Son vehículos propios de la empresa para su actividad permanente." }
+                ],
+                2: [
+                    { q: "¿En una cuenta en T, el lado izquierdo se denomina...?", o: ["Haber", "Debe", "Saldo", "Cargo"], a: 1, f: "El Debe siempre es el lado izquierdo." },
+                    { q: "¿Qué significa 'cargar' una cuenta?", o: ["Hacer anotación en el Haber", "Hacer anotación en el Debe", "Calcular su saldo", "Cerrar la cuenta"], a: 1, f: "Cargar o adeudar significa registrar en el Debe." },
+                    { q: "¿Las cuentas de Activo dónde aumentan su valor?", o: ["En el Debe", "En el Haber", "En ambos lados", "No aumentan"], a: 0, f: "Las cuentas de Activo nacen y aumentan por el Debe." },
+                    { q: "¿Las cuentas de Pasivo dónde disminuyen su valor?", o: ["En el Debe", "En el Haber", "Siempre disminuyen", "Nunca disminuyen"], a: 0, f: "El Pasivo funciona al revés del Activo: disminuye por el Debe." },
+                    { q: "¿Qué es el saldo de una cuenta?", o: ["La suma del Debe", "La suma del Haber", "La diferencia entre las sumas de Debe y Haber", "El dinero del banco"], a: 2, f: "El saldo es la diferencia entre las anotaciones de un lado y de otro." },
+                    { q: "Si la suma del Debe es mayor que la del Haber, el saldo es:", o: ["Saldo Acreedor", "Saldo Deudor", "Saldo Nulo", "Saldo Activo"], a: 1, f: "Cuando Debe > Haber, el saldo es Deudor (SD)." },
+                    { q: "Una cuenta de gastos (como 'Arrendamientos') funciona igual que una de:", o: ["Pasivo", "Activo", "Patrimonio Net", "Ingresos"], a: 1, f: "Los gastos aumentan por el Debe, igual que los Activos." },
+                    { q: "Las cuentas de ingresos (como 'Ventas') aumentan por:", o: ["El Debe", "El Haber", "Ambos lados", "Depende de la factura"], a: 1, f: "Los ingresos siempre nacen y aumentan por el Haber." },
+                    { q: "¿Qué significa 'liquidar' una cuenta?", o: ["Abrirla por primera vez", "Operaciones para determinar su saldo", "Borrarla del libro", "Pagar la deuda"], a: 1, f: "Liquidar es sumar ambos lados y hallar el saldo." },
+                    { q: "Si una cuenta tiene la misma suma en Debe y Haber, está:", o: ["Liquidada", "Saldada o a cero", "Cuadrada", "Incorrecta"], a: 1, f: "Se dice que una cuenta está saldada cuando su saldo es cero." }
+                ],
+                3: [
+                    { q: "El principio de la Partida Doble implica que:", o: ["Hay un deudor para cada acreedor", "Se registran los importes dos veces", "La suma de Debe puede ser distinta al Haber", "Solo se usan dos cuentas"], a: 0, f: "No hay deudor sin acreedor; la suma del Debe debe ser igual al Haber." },
+                    { q: "Compramos mercaderías en efectivo. ¿Qué cuentas intervienen?", o: ["Compras de mercaderías y Proveedores", "Compras de mercaderías y Caja", "Clientes y Ventas", "Bancos y Proveedores"], a: 1, f: "Aumenta el gasto (Compras) y disminuye el dinero en efectivo (Caja)." },
+                    { q: "Pagamos por banco una deuda pendiente a un proveedor. El asiento tendrá:", o: ["Proveedores en el Debe y Bancos en el Haber", "Bancos en el Debe y Proveedores en el Haber", "Caja en el Debe y Clientes en el Haber", "Solo anotaciones en el Haber"], a: 0, f: "Disminuye la deuda (Proveedores al Debe) y disminuye el dinero (Bancos al Haber)." },
+                    { q: "Dónde se registran cronológicamente, día a día, los asientos?", o: ["Libro Mayor", "Libro de Balances", "Libro Diario", "Libro de Socios"], a: 2, f: "El Libro Diario registra las operaciones en orden cronológico." },
+                    { q: "Si ingresamos dinero en efectivo en la cuenta bancaria de la empresa:", o: ["Se carga Bancos y se abona Caja", "Se carga Caja y se abona Bancos", "Se carga Bancos y se carga Caja", "Se gasta una comisión"], a: 0, f: "Aumenta Bancos (Debe) y disminuye Caja (Haber)." },
+                    { q: "Un asiento con una sola cuenta en Debe y una sola en Haber es:", o: ["Compuesto", "Mixto", "Simple", "Unilateral"], a: 2, f: "Son asientos simples los que solo tienen una cuenta de cargo y una de abono." },
+                    { q: "El IVA Soportado en una compra de mercaderías se coloca en:", o: ["El Debe, junto a la compra", "El Haber, junto al proveedor", "No se pone en el asiento", "Depende de si se paga ya"], a: 0, f: "El IVA Soportado es un derecho (Activo) y acompaña al gasto en el Debe." },
+                    { q: "El Libro Mayor recoge las cuentas en forma de:", o: ["Listado continuo", "Cuentas en T para ver movimientos por elemento", "Gráficos de barras", "Hoja de balance final"], a: 1, f: "El Mayor organiza la información abriendo una 'T' para cada cuenta." },
+                    { q: "Un asiento de apertura sirve para:", o: ["Empezar el ejercicio con los saldos iniciales", "Cerrar el año comercial", "Registrar ventas diarias", "Pedir un préstamo"], a: 0, f: "El asiento de apertura abre la contabilidad reflejando el patrimonio inicial." },
+                    { q: "Como se llama la anotación al Haber en un asiento?", o: ["Cargo", "Abono", "Adeudo", "Cuadrada"], a: 1, f: "Anotar al Haber se llama 'abonar' o 'acreditar'." }
+                ]
+            }
+        };
+
+        let currentLang = 'ca';
+        let currentLevel = 1;
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let correctAnswersInLevel = 0;
+        let lives = 3;
+        
+        // Estado de desbloqueo de niveles guardado localmente en sesión
+        let unlockedLevels = [1];
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.getElementById('lang-screen').classList.remove('active');
+            document.getElementById('menu-screen').classList.add('active');
+            renderMenu();
+        }
+
+        function renderMenu() {
+            const texts = i18n[currentLang];
+            document.getElementById('menu-title').innerText = texts.menuTitle;
+            
+            const list = document.getElementById('levels-list');
+            list.innerHTML = '';
+
+            for(let i = 1; i <= 3; i++) {
+                const isUnlocked = unlockedLevels.includes(i);
+                const card = document.createElement('div');
+                card.className = `level-card ${isUnlocked ? '' : 'locked'}`;
+                
+                let lvlTxt = texts[`lvl${i}`];
+                if(!isUnlocked) lvlTxt += ` 🔒 (${texts.locked})`;
+                
+                card.innerText = lvlTxt;
+                if(isUnlocked) {
+                    card.onclick = () => startLevel(i);
+                }
+                list.appendChild(card);
+            }
+        }
+
+        function startLevel(lvl) {
+            currentLevel = lvl;
+            currentQuestionIndex = 0;
+            correctAnswersInLevel = 0;
+            score = 0;
+            lives = 3;
+
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('txt-score').innerText = i18n[currentLang].score;
+            updateLivesDisplay();
+
+            document.getElementById('menu-screen').classList.remove('active');
+            document.getElementById('game-screen').classList.add('active');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const levelQuestions = dbQuestions[currentLang][currentLevel];
+            const q = levelQuestions[currentQuestionIndex];
+            
+            document.getElementById('level-indicator').innerText = i18n[currentLang][`lvl${currentLevel}`] + ` (${currentQuestionIndex + 1}/10)`;
+            document.getElementById('question-text').innerText = q.q;
+            
+            const percent = (currentQuestionIndex / levelQuestions.length) * 100;
+            document.getElementById('progress').style.width = percent + '%';
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            document.getElementById('feedback-box').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+
+            q.o.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-option';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(index, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIndex, selectedBtn) {
+            const levelQuestions = dbQuestions[currentLang][currentLevel];
+            const q = levelQuestions[currentQuestionIndex];
+            const buttons = document.querySelectorAll('.btn-option');
+            
+            buttons.forEach(btn => btn.disabled = true);
+            const feedbackBox = document.getElementById('feedback-box');
+            feedbackBox.style.display = 'block';
+
+            if (selectedIndex === q.a) {
+                selectedBtn.classList.add('correct');
+                feedbackBox.innerText = q.f;
+                feedbackBox.className = "feedback correct-bg";
+                score += 10;
+                correctAnswersInLevel++;
+                document.getElementById('score-val').innerText = score;
+            } else {
+                selectedBtn.classList.add('incorrect');
+                buttons[q.a].classList.add('correct');
+                feedbackBox.innerText = q.f;
+                feedbackBox.className = "feedback incorrect-bg";
+                lives--;
+                updateLivesDisplay();
+            }
+
+            document.getElementById('next-btn').innerText = i18n[currentLang].nextBtn;
+            document.getElementById('next-btn').style.display = 'block';
+        }
+
+        function updateLivesDisplay() {
+            let hearts = "";
+            for(let i=0; i<3; i++) {
+                hearts += i < lives ? "❤️" : "🖤";
+            }
+            document.getElementById('lives-display').innerText = hearts;
+
+            if (lives <= 0) {
+                setTimeout(endLevelScreen, 1000);
+            }
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            const levelQuestions = dbQuestions[currentLang][currentLevel];
+            if (currentQuestionIndex < levelQuestions.length && lives > 0) {
+                showQuestion();
+            } else {
+                endLevelScreen();
+            }
+        }
+
+        function endLevelScreen() {
+            document.getElementById('game-screen').classList.remove('active');
+            document.getElementById('level-end-screen').classList.add('active');
+            
+            const title = document.getElementById('level-end-title');
+            const resultText = document.getElementById('level-end-result');
+            const btn = document.getElementById('level-end-btn');
+            const texts = i18n[currentLang];
+
+            btn.innerText = texts.backMenu;
+
+            if (lives <= 0) {
+                title.innerText = "Game Over 💀";
+                resultText.innerText = texts.gameOver;
+            } else {
+                title.innerText = texts[`lvl${currentLevel}`];
+                if (correctAnswersInLevel >= 5) {
+                    resultText.innerText = texts.passed.replace("{correct}", correctAnswersInLevel);
+                    // Desbloquear siguiente nivel si no estaba ya
+                    if (currentLevel < 3 && !unlockedLevels.includes(currentLevel + 1)) {
+                        unlockedLevels.push(currentLevel + 1);
+                    }
+                } else {
+                    resultText.innerText = texts.failed.replace("{correct}", correctAnswersInLevel);
+                }
+            }
+        }
+
+        function goToMenu() {
+            document.getElementById('level-end-screen').classList.remove('active');
+            document.getElementById('menu-screen').classList.add('active');
+            renderMenu();
+        }
+    </script>
+</body>
+</html>
